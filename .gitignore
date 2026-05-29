@@ -1,0 +1,23 @@
+# IDE / editor
+.claude/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Secrets — never commit real credentials
+AmalindaPlumbing.Api/appsettings.json
+AmalindaPlumbing.Api/appsettings.*.json
+!AmalindaPlumbing.Api/appsettings.example.json
+
+# Node
+amalinda-client/node_modules/
+amalinda-client/dist/
+
+# Misc
+seed.sql
+.DS_Store
+Thumbs.db
