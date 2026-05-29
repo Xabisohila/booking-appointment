@@ -1,8 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import axios from 'axios'
 import { exportCsv } from '../utils/csv'
-
-const API = 'http://localhost:5000/api'
+import { API } from '../config'
 
 const statusColors: Record<string, string> = {
   New: 'bg-slate-100 text-slate-600',

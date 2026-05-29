@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../auth'
-
-const API = 'http://localhost:5000/api'
+import { API } from '../config'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: '📊' },

@@ -6,11 +6,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AmalindaPlumbing.Api.Services;
 
-public class AiQualificationService(AppDbContext db, AnthropicClient claude, WhatsAppService whatsApp, IConfiguration config)
+public class AiQualificationService(AppDbContext db, AnthropicClient claude, WhatsAppService whatsApp, EmailService email, SlotService slots, IConfiguration config)
 {
     private string PracticeName => config["Practice:Name"] ?? "our dental practice";
 
-    private string BuildSystemPrompt() => $$"""
+    private async Task<string> BuildSystemPromptAsync()
+    {
+        var availableSlots = await slots.GetAvailableSlotsTextAsync();
+        return BuildSystemPromptWithSlots(availableSlots);
+    }
+
+    private string BuildSystemPromptWithSlots(string availableSlots) => $$"""
         You are the friendly AI receptionist for {{PracticeName}}. Your role is to help patients book appointments via WhatsApp.
 
         Your conversation flow:
@@ -19,7 +25,8 @@ public class AiQualificationService(AppDbContext db, AnthropicClient claude, Wha
         3. Find out their reason for visiting — toothache, routine check-up, cleaning, whitening, sensitivity, chipped or broken tooth, extraction, implants, braces/Invisalign, or something else
         4. Ask if they are a new patient or a returning patient
         5. Check urgency — are they in pain right now? Dental emergencies (severe pain, swelling, facial trauma) get priority slots
-        6. Offer available appointment times and confirm their preference
+        6. Offer available appointment times from this list and confirm the patient's preference:
+           {{availableSlots}}
 
         Keep every message short — this is WhatsApp, not email. One or two sentences per reply maximum.
 
@@ -34,15 +41,29 @@ public class AiQualificationService(AppDbContext db, AnthropicClient claude, Wha
 
     public async Task HandleIncomingMessageAsync(string phone, string userMessage)
     {
+        // Find the most recent active lead for this phone number.
+        // If their last lead is done (Booked/Lost) start a fresh one so
+        // returning patients get a clean qualification flow.
         var lead = await db.Leads
             .Include(l => l.Conversations)
-            .FirstOrDefaultAsync(l => l.Phone == phone);
+            .Where(l => l.Phone == phone)
+            .OrderByDescending(l => l.CreatedAt)
+            .FirstOrDefaultAsync();
 
-        if (lead == null)
+        var isActive = lead != null &&
+                       lead.Status != LeadStatus.Lost &&
+                       !(lead.Status == LeadStatus.Booked &&
+                         await db.Bookings.AnyAsync(b => b.LeadId == lead.Id &&
+                             (b.Status == BookingStatus.Completed ||
+                              b.Status == BookingStatus.Cancelled ||
+                              b.Status == BookingStatus.NoShow)));
+
+        if (lead == null || !isActive)
         {
             lead = new Lead { Phone = phone, Status = LeadStatus.Qualifying };
             db.Leads.Add(lead);
             await db.SaveChangesAsync();
+            await email.SendNewLeadAlertAsync(phone, null);
         }
 
         lead.Conversations.Add(new Conversation
@@ -63,7 +84,7 @@ public class AiQualificationService(AppDbContext db, AnthropicClient claude, Wha
         {
             Model = "claude-sonnet-4-6",
             MaxTokens = 500,
-            System = [new SystemMessage(BuildSystemPrompt())],
+            System = [new SystemMessage(await BuildSystemPromptAsync())],
             Messages = history
         };
 

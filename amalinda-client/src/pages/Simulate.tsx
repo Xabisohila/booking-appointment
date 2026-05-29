@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
-
-const API = 'http://localhost:5000/api'
+import { API } from '../config'
 
 interface Message { role: 'user' | 'assistant'; text: string }
 

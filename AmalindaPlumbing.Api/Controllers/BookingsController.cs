@@ -76,6 +76,16 @@ public class BookingsController(AppDbContext db, WhatsAppService whatsApp, IConf
         return Ok(job);
     }
 
+    [HttpPatch("{id}/notes")]
+    public async Task<IActionResult> UpdateNotes(int id, [FromBody] string notes)
+    {
+        var job = await db.Jobs.FirstOrDefaultAsync(j => j.BookingId == id);
+        if (job is null) return NotFound();
+        job.DentistNotes = notes;
+        await db.SaveChangesAsync();
+        return Ok();
+    }
+
     [HttpPost("{id}/noshow")]
     public async Task<IActionResult> MarkNoShow(int id)
     {

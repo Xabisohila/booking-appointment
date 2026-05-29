@@ -2,8 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import axios from 'axios'
 import { exportCsv } from '../utils/csv'
 import BookingCalendar from '../components/BookingCalendar'
-
-const API = 'http://localhost:5000/api'
+import { API } from '../config'
 
 const statusColors: Record<string, string> = {
   Confirmed: 'bg-blue-100 text-blue-700',
