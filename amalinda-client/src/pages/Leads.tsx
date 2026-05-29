@@ -4,11 +4,11 @@ import { exportCsv } from '../utils/csv'
 import { API } from '../config'
 
 const statusColors: Record<string, string> = {
-  New: 'bg-slate-100 text-slate-600',
-  Qualifying: 'bg-yellow-100 text-yellow-700',
-  Qualified: 'bg-green-100 text-green-700',
-  Booked: 'bg-blue-100 text-blue-700',
-  Lost: 'bg-red-100 text-red-700',
+  New:        'bg-slate-100 text-slate-500',
+  Qualifying: 'bg-amber-100 text-amber-700',
+  Qualified:  'bg-emerald-100 text-emerald-700',
+  Booked:     'bg-indigo-100 text-indigo-700',
+  Lost:       'bg-red-100 text-red-500',
 }
 
 const STATUS_TABS = ['All', 'New', 'Qualifying', 'Qualified', 'Booked', 'Lost']
@@ -124,14 +124,17 @@ export default function Leads() {
       <div className="flex-1 p-4 md:p-8 overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-slate-800">Leads</h2>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Leads</h2>
+            <p className="text-sm text-slate-400 mt-0.5">All patient enquiries</p>
+          </div>
           <div className="flex gap-2">
             <button onClick={handleExport}
-              className="px-3 py-2 text-sm font-medium text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-              Export CSV
+              className="px-3 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 bg-white shadow-sm">
+              ↓ Export
             </button>
             <button onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 shadow-sm shadow-indigo-500/20">
               + Add Patient
             </button>
           </div>
@@ -146,38 +149,38 @@ export default function Leads() {
         </div>
 
         {/* Status tabs */}
-        <div className="flex gap-1 mb-4">
+        <div className="flex gap-1 mb-4 bg-slate-100 p-1 rounded-xl w-fit">
           {STATUS_TABS.map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${statusFilter === s ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${statusFilter === s ? 'bg-white text-slate-900 shadow-sm font-semibold' : 'text-slate-500 hover:text-slate-700'}`}>
               {s}
             </button>
           ))}
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
-          <table className="w-full text-sm min-w-[500px]">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
+        <div className="bg-white rounded-2xl border border-slate-200/80 overflow-x-auto shadow-sm">
+          <table className="w-full text-[13px] min-w-[500px]">
+            <thead>
+              <tr className="border-b border-slate-100">
                 {['Name', 'Phone', 'Concern', 'Status', 'Date'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 font-medium text-slate-600">{h}</th>
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400 text-sm">No leads found</td></tr>
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400 text-sm">No leads found</td></tr>
               ) : filtered.map(lead => (
                 <tr key={lead.id} onClick={() => openLead(lead.id)}
-                  className={`border-b border-slate-100 cursor-pointer transition-colors ${selected?.id === lead.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
-                  <td className="px-4 py-3 font-medium">{lead.name || '—'}</td>
-                  <td className="px-4 py-3 text-slate-600">{lead.phone}</td>
-                  <td className="px-4 py-3 text-slate-600">{lead.concern || '—'}</td>
+                  className={`border-b border-slate-50 cursor-pointer transition-colors ${selected?.id === lead.id ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}>
+                  <td className="px-4 py-3 font-semibold text-slate-800">{lead.name || '—'}</td>
+                  <td className="px-4 py-3 text-slate-500">{lead.phone}</td>
+                  <td className="px-4 py-3 text-slate-600 max-w-[180px] truncate">{lead.concern || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[lead.status] ?? ''}`}>{lead.status}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusColors[lead.status] ?? ''}`}>{lead.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{new Date(lead.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-slate-400">{new Date(lead.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>

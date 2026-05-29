@@ -15,53 +15,85 @@ export default function Settings() {
     })
   }, [])
 
-  if (loading) return <div className="p-8 text-slate-400 text-sm">Loading…</div>
+  if (loading) return (
+    <div className="p-8 flex items-center gap-3 text-slate-400">
+      <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+      Loading settings…
+    </div>
+  )
 
   const activeDays = settings.workingDays.split(',').map((d: string) => d.trim())
 
   return (
-    <div className="p-8 max-w-2xl">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Settings</h2>
-      <p className="text-sm text-slate-500 mb-6 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
-        These settings are read from <code className="text-xs bg-yellow-100 px-1 py-0.5 rounded">appsettings.json</code> on the server.
-        To change them, update that file and restart the backend.
-      </p>
+    <div className="p-4 md:p-8 max-w-2xl">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Settings</h2>
+        <p className="text-sm text-slate-400 mt-0.5">Practice configuration — read from server</p>
+      </div>
 
-      <div className="space-y-6">
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 flex gap-3 items-start mb-6">
+        <span className="text-amber-500 text-base flex-shrink-0 mt-0.5">⚠️</span>
+        <p className="text-sm text-amber-800">
+          These settings are read from <code className="bg-amber-100 text-xs px-1.5 py-0.5 rounded-lg font-mono">appsettings.json</code> on the server.
+          To change them, update that file and restart the backend.
+        </p>
+      </div>
+
+      <div className="space-y-4">
         {/* Practice */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="font-semibold text-slate-800 mb-4">Practice</h3>
-          <div className="space-y-3">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <span className="text-base">🦷</span>
+            </div>
+            <h3 className="font-semibold text-slate-900">Practice</h3>
+          </div>
+          <div className="space-y-0">
             <Row label="Practice Name" value={settings.practiceName} />
             <Row label="Google Review Link" value={settings.googleReviewLink} isLink />
           </div>
         </div>
 
         {/* Working hours */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="font-semibold text-slate-800 mb-4">Working Hours</h3>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-medium text-slate-500 mb-2">Working Days</p>
-              <div className="flex gap-2 flex-wrap">
-                {DAYS.map(d => (
-                  <span key={d} className={`px-2.5 py-1 rounded-full text-xs font-medium ${activeDays.includes(d) ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400'}`}>
-                    {d.slice(0, 3)}
-                  </span>
-                ))}
-              </div>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <span className="text-base">🕐</span>
             </div>
-            <Row label="Start Time" value={settings.workingStart} />
-            <Row label="End Time" value={settings.workingEnd} />
-            <Row label="Slot Duration" value={`${settings.slotMinutes} minutes`} />
+            <h3 className="font-semibold text-slate-900">Working Hours</h3>
           </div>
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Days</p>
+            <div className="flex gap-1.5 flex-wrap">
+              {DAYS.map(d => (
+                <span key={d} className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                  activeDays.includes(d)
+                    ? 'bg-indigo-100 text-indigo-700'
+                    : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {d.slice(0, 3)}
+                </span>
+              ))}
+            </div>
+          </div>
+          <Row label="Start Time" value={settings.workingStart} />
+          <Row label="End Time" value={settings.workingEnd} />
+          <Row label="Slot Duration" value={`${settings.slotMinutes} minutes`} />
         </div>
 
         {/* Auth */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="font-semibold text-slate-800 mb-1">Authentication</h3>
-          <p className="text-xs text-slate-400 mb-4">Username and password are set in <code className="bg-slate-100 px-1 py-0.5 rounded">appsettings.json</code> under <code className="bg-slate-100 px-1 py-0.5 rounded">Auth</code>.</p>
-          <p className="text-sm text-slate-600">To change your password, update <code className="bg-slate-100 text-xs px-1 py-0.5 rounded">Auth:Password</code> and restart the backend.</p>
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-8 h-8 bg-violet-100 rounded-xl flex items-center justify-center">
+              <span className="text-base">🔐</span>
+            </div>
+            <h3 className="font-semibold text-slate-900">Authentication</h3>
+          </div>
+          <p className="text-sm text-slate-500">
+            Username and password are set under <code className="bg-slate-100 text-xs px-1.5 py-0.5 rounded-lg font-mono">Auth</code> in{' '}
+            <code className="bg-slate-100 text-xs px-1.5 py-0.5 rounded-lg font-mono">appsettings.json</code>.
+            Update and restart the backend to change credentials.
+          </p>
         </div>
       </div>
     </div>
@@ -70,13 +102,15 @@ export default function Settings() {
 
 function Row({ label, value, isLink }: { label: string; value: string; isLink?: boolean }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
       <span className="text-sm text-slate-500">{label}</span>
       {isLink && value ? (
         <a href={value} target="_blank" rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline truncate max-w-xs">{value}</a>
+          className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline truncate max-w-xs font-medium">
+          {value}
+        </a>
       ) : (
-        <span className="text-sm font-medium text-slate-800">{value || '—'}</span>
+        <span className="text-sm font-semibold text-slate-800">{value || '—'}</span>
       )}
     </div>
   )

@@ -53,13 +53,16 @@ export default function Reviews() {
 
   return (
     <div className="p-4 md:p-8">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Reviews</h2>
-      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Reviews</h2>
+        <p className="text-sm text-slate-400 mt-0.5">Completed appointments and patient feedback</p>
+      </div>
+      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-x-auto shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
+            <tr className="border-b border-slate-100">
               {['Patient', 'Concern', 'Date', 'Dentist Notes', 'Review', 'Rating'].map(h => (
-                <th key={h} className="text-left px-4 py-3 font-medium text-slate-600">{h}</th>
+                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
@@ -68,9 +71,9 @@ export default function Reviews() {
               <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400 text-sm">No completed appointments yet</td></tr>
             )}
             {bookings.map(b => (
-              <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50 align-top">
-                <td className="px-4 py-3 font-medium">{b.lead?.name || '—'}</td>
-                <td className="px-4 py-3 text-slate-600">{b.lead?.concern || '—'}</td>
+              <tr key={b.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors align-top">
+                <td className="px-4 py-3 font-semibold text-slate-800 text-[13px]">{b.lead?.name || '—'}</td>
+                <td className="px-4 py-3 text-slate-500 text-[13px] max-w-[140px] truncate">{b.lead?.concern || '—'}</td>
                 <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                   {b.job ? new Date(b.job.completedAt).toLocaleDateString() : '—'}
                 </td>
