@@ -14,6 +14,16 @@ const statusColors: Record<string, string> = {
 const STATUS_TABS = ['All', 'New', 'Qualifying', 'Qualified', 'Booked', 'Lost']
 const emptyForm = { name: '', phone: '', concern: '', isNewPatient: true }
 
+function groupByDay(slots: any[]) {
+  const map: Record<string, any[]> = {}
+  for (const s of slots) {
+    const day = new Date(s.dateTime).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' })
+    if (!map[day]) map[day] = []
+    map[day].push(s)
+  }
+  return map
+}
+
 export default function Leads() {
   const [leads, setLeads] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
@@ -23,7 +33,10 @@ export default function Leads() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBookModal, setShowBookModal] = useState(false)
   const [form, setForm] = useState(emptyForm)
-  const [bookForm, setBookForm] = useState({ scheduledAt: '', notes: '' })
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+  const [bookNotes, setBookNotes] = useState('')
+  const [slots, setSlots] = useState<any[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const load = () => axios.get(`${API}/leads`).then(r => setLeads(r.data))
@@ -48,6 +61,19 @@ export default function Leads() {
     setConvo(r.data.conversations ?? [])
   }
 
+  const openBookModal = async () => {
+    setShowBookModal(true)
+    setSelectedSlot(null)
+    setBookNotes('')
+    setSlotsLoading(true)
+    try {
+      const r = await axios.get(`${API}/slots?days=7`)
+      setSlots(r.data)
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
+
   const handleAdd = async (e: React.SyntheticEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -61,19 +87,18 @@ export default function Leads() {
 
   const handleBook = async (e: React.SyntheticEvent) => {
     e.preventDefault()
-    if (!selected) return
+    if (!selected || !selectedSlot) return
     setSaving(true)
     try {
       await axios.post(`${API}/bookings`, {
         leadId: selected.id,
-        scheduledAt: new Date(bookForm.scheduledAt).toISOString(),
-        notes: bookForm.notes || null,
+        scheduledAt: new Date(selectedSlot).toISOString(),
+        notes: bookNotes || null,
       })
       await load()
       const r = await axios.get(`${API}/leads/${selected.id}`)
       setSelected(r.data)
       setShowBookModal(false)
-      setBookForm({ scheduledAt: '', notes: '' })
     } finally { setSaving(false) }
   }
 
@@ -92,6 +117,7 @@ export default function Leads() {
   }
 
   const canBook = selected && !['Booked', 'Lost'].includes(selected.status)
+  const slotsByDay = groupByDay(slots)
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -113,11 +139,9 @@ export default function Leads() {
 
         {/* Search + filter */}
         <div className="flex items-center gap-3 mb-4">
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
+          <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, phone or concern…"
-            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <span className="text-sm text-slate-400">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
         </div>
 
@@ -202,7 +226,7 @@ export default function Leads() {
               </span>
             </div>
             {canBook && (
-              <button onClick={() => setShowBookModal(true)}
+              <button onClick={openBookModal}
                 className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
                 Book Appointment
               </button>
@@ -259,38 +283,81 @@ export default function Leads() {
         </div>
       )}
 
-      {/* Book Appointment modal */}
+      {/* Book Appointment modal — slot picker */}
       {showBookModal && selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-5">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-slate-800">Book Appointment</h3>
                 <p className="text-sm text-slate-500 mt-0.5">{selected.name} · {selected.concern}</p>
               </div>
               <button onClick={() => setShowBookModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
-            <form onSubmit={handleBook} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Appointment Date & Time</label>
-                <input required type="datetime-local" value={bookForm.scheduledAt}
-                  onChange={e => setBookForm(f => ({ ...f, scheduledAt: e.target.value }))}
-                  min={new Date().toISOString().slice(0, 16)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+            <form onSubmit={handleBook} className="flex flex-col flex-1 overflow-hidden gap-4">
+              {/* Slot grid */}
+              <div className="flex-1 overflow-auto">
+                <p className="text-sm font-medium text-slate-700 mb-3">Select an available slot</p>
+                {slotsLoading ? (
+                  <div className="text-center py-8 text-slate-400 text-sm">Loading available slots…</div>
+                ) : slots.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-sm">
+                    <p className="text-2xl mb-1">📅</p>
+                    No available slots in the next 7 days
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {Object.entries(slotsByDay).map(([day, daySlots]) => (
+                      <div key={day}>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{day}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {daySlots.map((s: any) => {
+                            const time = new Date(s.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            const isSelected = selectedSlot === s.dateTime
+                            return (
+                              <button
+                                key={s.dateTime}
+                                type="button"
+                                onClick={() => setSelectedSlot(s.dateTime)}
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                                  isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'bg-white text-slate-700 border-slate-300 hover:border-blue-400 hover:text-blue-600'
+                                }`}
+                              >
+                                {time}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
-                <textarea value={bookForm.notes} onChange={e => setBookForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={2} placeholder="Any special notes…"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-              </div>
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowBookModal(false)}
-                  className="flex-1 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
-                <button type="submit" disabled={saving}
-                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-                  {saving ? 'Booking…' : 'Confirm Booking'}
-                </button>
+
+              {/* Notes + actions */}
+              <div className="flex-shrink-0 space-y-3 pt-3 border-t border-slate-100">
+                {selectedSlot && (
+                  <p className="text-sm text-blue-700 font-medium bg-blue-50 px-3 py-2 rounded-lg">
+                    Selected: {new Date(selectedSlot).toLocaleString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Notes <span className="text-slate-400 font-normal">(optional)</span></label>
+                  <textarea value={bookNotes} onChange={e => setBookNotes(e.target.value)}
+                    rows={2} placeholder="Any special notes for this appointment…"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+                </div>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowBookModal(false)}
+                    className="flex-1 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+                  <button type="submit" disabled={saving || !selectedSlot}
+                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40">
+                    {saving ? 'Booking…' : 'Confirm Booking'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

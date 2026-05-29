@@ -6,6 +6,9 @@ export default function Reviews() {
   const [bookings, setBookings] = useState<any[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [notesDraft, setNotesDraft] = useState('')
+  const [ratingBookingId, setRatingBookingId] = useState<number | null>(null)
+  const [ratingDraft, setRatingDraft] = useState(0)
+  const [ratingText, setRatingText] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = () => axios.get(`${API}/bookings`).then(r =>
@@ -21,6 +24,18 @@ export default function Reviews() {
   const startEdit = (b: any) => {
     setEditingId(b.id)
     setNotesDraft(b.job?.dentistNotes ?? '')
+  }
+
+  const saveRating = async (bookingId: number) => {
+    if (ratingDraft === 0) return
+    setSaving(true)
+    try {
+      await axios.patch(`${API}/bookings/${bookingId}/review`, { rating: ratingDraft, text: ratingText || null }, {
+        headers: { 'Content-Type': 'application/json' }
+      })
+      await load()
+      setRatingBookingId(null)
+    } finally { setSaving(false) }
   }
 
   const saveNotes = async (bookingId: number) => {
@@ -111,9 +126,39 @@ export default function Reviews() {
                     : <span className="text-slate-400">Pending</span>}
                 </td>
                 <td className="px-4 py-3">
-                  {b.job?.reviewRating
-                    ? <span className="font-medium">{b.job.reviewRating} / 5 ⭐</span>
-                    : <span className="text-slate-400">Awaiting</span>}
+                  {ratingBookingId === b.id ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-1">
+                        {[1,2,3,4,5].map(star => (
+                          <button key={star} type="button" onClick={() => setRatingDraft(star)}
+                            className={`text-xl transition-colors ${star <= ratingDraft ? 'text-yellow-400' : 'text-slate-300 hover:text-yellow-300'}`}>
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                      <input value={ratingText} onChange={e => setRatingText(e.target.value)}
+                        placeholder="Review text (optional)"
+                        className="w-full px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      <div className="flex gap-1">
+                        <button onClick={() => saveRating(b.id)} disabled={saving || ratingDraft === 0}
+                          className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50">
+                          {saving ? '…' : 'Save'}
+                        </button>
+                        <button onClick={() => setRatingBookingId(null)}
+                          className="px-2 py-1 text-slate-500 text-xs rounded hover:bg-slate-100">Cancel</button>
+                      </div>
+                    </div>
+                  ) : b.job?.reviewRating ? (
+                    <button onClick={() => { setRatingBookingId(b.id); setRatingDraft(b.job.reviewRating); setRatingText(b.job.reviewText ?? '') }}
+                      className="font-medium text-yellow-500 hover:underline text-sm">
+                      {'★'.repeat(b.job.reviewRating)}{'☆'.repeat(5 - b.job.reviewRating)} {b.job.reviewRating}/5
+                    </button>
+                  ) : (
+                    <button onClick={() => { setRatingBookingId(b.id); setRatingDraft(0); setRatingText('') }}
+                      className="text-xs text-slate-400 hover:text-blue-500 italic">
+                      + Log rating
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

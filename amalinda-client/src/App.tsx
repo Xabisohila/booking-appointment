@@ -6,6 +6,7 @@ import Leads from './pages/Leads'
 import Bookings from './pages/Bookings'
 import Reviews from './pages/Reviews'
 import Simulate from './pages/Simulate'
+import Settings from './pages/Settings'
 import Login from './pages/Login'
 import './index.css'
 
@@ -24,6 +25,7 @@ function ProtectedApp() {
           <Route path="/bookings" element={<Bookings />} />
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/simulate" element={<Simulate />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AmalindaPlumbing.Api.Controllers;
 
 public record CreateBookingRequest(int LeadId, DateTime ScheduledAt, string? Notes);
+public record LogReviewRequest(int Rating, string? Text);
 
 [Authorize]
 [ApiController]
@@ -74,6 +75,17 @@ public class BookingsController(AppDbContext db, WhatsAppService whatsApp, IConf
         await whatsApp.SendTextMessageAsync(booking.Lead.Phone, reviewMsg);
 
         return Ok(job);
+    }
+
+    [HttpPatch("{id}/review")]
+    public async Task<IActionResult> LogReview(int id, [FromBody] LogReviewRequest req)
+    {
+        var job = await db.Jobs.FirstOrDefaultAsync(j => j.BookingId == id);
+        if (job is null) return NotFound();
+        job.ReviewRating = req.Rating;
+        job.ReviewText = req.Text;
+        await db.SaveChangesAsync();
+        return Ok();
     }
 
     [HttpPatch("{id}/notes")]

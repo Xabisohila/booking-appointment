@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { API } from '../config'
+import BarChart from '../components/BarChart'
 
 const statusColors: Record<string, string> = {
   New:        'bg-slate-100 text-slate-600',
@@ -20,8 +21,12 @@ const bookingColors: Record<string, string> = {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null)
+  const [trends, setTrends] = useState<any>(null)
 
-  const load = () => axios.get(`${API}/stats`).then(r => setStats(r.data))
+  const load = () => Promise.all([
+    axios.get(`${API}/stats`).then(r => setStats(r.data)),
+    axios.get(`${API}/stats/trends`).then(r => setTrends(r.data)),
+  ])
 
   useEffect(() => {
     load()
@@ -154,6 +159,22 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Weekly trend chart */}
+      {trends && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h3 className="font-semibold text-slate-800 mb-5">Weekly Activity — last 8 weeks</h3>
+          <BarChart
+            labels={trends.weeks}
+            series={[
+              { label: 'New Leads',  values: trends.leads,    color: '#60a5fa' },
+              { label: 'Bookings',   values: trends.bookings, color: '#34d399' },
+              { label: 'No-shows',   values: trends.noShows,  color: '#f87171' },
+            ]}
+            height={160}
+          />
+        </div>
+      )}
     </div>
   )
 }

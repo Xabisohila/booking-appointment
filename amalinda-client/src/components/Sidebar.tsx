@@ -10,6 +10,7 @@ const links = [
   { to: '/bookings', label: 'Bookings', icon: '📅' },
   { to: '/reviews', label: 'Reviews', icon: '⭐' },
   { to: '/simulate', label: 'Test AI', icon: '🤖' },
+  { to: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
 export default function Sidebar() {

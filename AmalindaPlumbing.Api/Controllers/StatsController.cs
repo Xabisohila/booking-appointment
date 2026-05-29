@@ -11,6 +11,47 @@ namespace AmalindaPlumbing.Api.Controllers;
 [Route("api/stats")]
 public class StatsController(AppDbContext db) : ControllerBase
 {
+    [HttpGet("trends")]
+    public async Task<IActionResult> GetTrends([FromQuery] int weeks = 8)
+    {
+        var cutoff = DateTime.UtcNow.Date.AddDays(-(weeks * 7));
+
+        var leads = await db.Leads
+            .Where(l => l.CreatedAt >= cutoff)
+            .ToListAsync();
+
+        var bookings = await db.Bookings
+            .Where(b => b.CreatedAt >= cutoff)
+            .ToListAsync();
+
+        var noShows = await db.Bookings
+            .Where(b => b.Status == BookingStatus.NoShow && b.ScheduledAt >= cutoff)
+            .ToListAsync();
+
+        static string WeekKey(DateTime d)
+        {
+            var monday = d.Date.AddDays(-(((int)d.DayOfWeek + 6) % 7));
+            return monday.ToString("dd MMM");
+        }
+
+        var weekKeys = Enumerable.Range(0, weeks)
+            .Select(i => WeekKey(DateTime.UtcNow.AddDays(-(i * 7))))
+            .Reverse()
+            .ToList();
+
+        var leadsPerWeek    = leads.GroupBy(l => WeekKey(l.CreatedAt)).ToDictionary(g => g.Key, g => g.Count());
+        var bookingsPerWeek = bookings.GroupBy(b => WeekKey(b.CreatedAt)).ToDictionary(g => g.Key, g => g.Count());
+        var noShowsPerWeek  = noShows.GroupBy(b => WeekKey(b.ScheduledAt)).ToDictionary(g => g.Key, g => g.Count());
+
+        return Ok(new
+        {
+            weeks = weekKeys,
+            leads    = weekKeys.Select(w => leadsPerWeek.GetValueOrDefault(w, 0)),
+            bookings = weekKeys.Select(w => bookingsPerWeek.GetValueOrDefault(w, 0)),
+            noShows  = weekKeys.Select(w => noShowsPerWeek.GetValueOrDefault(w, 0)),
+        });
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get()
     {
