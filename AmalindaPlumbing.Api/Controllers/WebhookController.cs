@@ -3,13 +3,15 @@ using AmalindaPlumbing.Api.Models;
 using AmalindaPlumbing.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace AmalindaPlumbing.Api.Controllers;
 
 [ApiController]
 [Route("api/webhook")]
-public class WebhookController(AiQualificationService aiService, WhatsAppService whatsApp, AppDbContext db, IConfiguration config) : ControllerBase
+public class WebhookController(AiQualificationService aiService, WhatsAppService whatsApp, AppDbContext db, IConfiguration config, RateLimitService rateLimit) : ControllerBase
 {
     [HttpGet]
     public IActionResult Verify([FromQuery(Name = "hub.mode")] string mode,
@@ -24,34 +26,38 @@ public class WebhookController(AiQualificationService aiService, WhatsAppService
     }
 
     [HttpPost]
-    public async Task<IActionResult> Receive([FromBody] JsonElement payload)
+    public async Task<IActionResult> Receive()
     {
+        // Read raw body so we can verify the signature before parsing
+        Request.EnableBuffering();
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
+        var rawBody = await reader.ReadToEndAsync();
+        Request.Body.Position = 0;
+
+        if (!VerifySignature(rawBody))
+            return Unauthorized();
+
         try
         {
-            var entry = payload.GetProperty("entry")[0];
+            var payload = JsonDocument.Parse(rawBody).RootElement;
+
+            var entry   = payload.GetProperty("entry")[0];
             var changes = entry.GetProperty("changes")[0];
-            var value = changes.GetProperty("value");
+            var value   = changes.GetProperty("value");
 
             if (!value.TryGetProperty("messages", out var messages))
                 return Ok();
 
             var message = messages[0];
-            var phone = message.GetProperty("from").GetString()!;
-            var text = message.GetProperty("text").GetProperty("body").GetString()!.Trim();
-
+            var phone   = message.GetProperty("from").GetString()!;
+            var text    = message.GetProperty("text").GetProperty("body").GetString()!.Trim();
             var keyword = text.ToUpperInvariant();
 
-            if (keyword == "STOP")
-            {
-                await HandleStopAsync(phone);
-                return Ok();
-            }
+            if (keyword == "STOP")        { await HandleStopAsync(phone);        return Ok(); }
+            if (keyword == "RESCHEDULE")  { await HandleRescheduleAsync(phone);  return Ok(); }
 
-            if (keyword == "RESCHEDULE")
-            {
-                await HandleRescheduleAsync(phone);
-                return Ok();
-            }
+            if (!rateLimit.IsAllowed(phone))
+                return Ok(); // silently drop — don't tell the sender they're being throttled
 
             await aiService.HandleIncomingMessageAsync(phone, text);
         }
@@ -63,11 +69,32 @@ public class WebhookController(AiQualificationService aiService, WhatsAppService
         return Ok();
     }
 
+    private bool VerifySignature(string rawBody)
+    {
+        var appSecret = config["WhatsApp:AppSecret"];
+
+        // If AppSecret is not configured, skip verification (dev mode)
+        if (string.IsNullOrEmpty(appSecret)) return true;
+
+        if (!Request.Headers.TryGetValue("X-Hub-Signature-256", out var sigHeader))
+            return false;
+
+        var expected = sigHeader.ToString().Replace("sha256=", "");
+        var key      = Encoding.UTF8.GetBytes(appSecret);
+        var hash     = HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(rawBody));
+        var computed = Convert.ToHexString(hash).ToLowerInvariant();
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(computed),
+            Encoding.UTF8.GetBytes(expected));
+    }
+
     private async Task HandleStopAsync(string phone)
     {
         var booking = await db.Bookings
             .Include(b => b.Lead)
-            .Where(b => b.Lead.Phone == phone && (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Reminded))
+            .Where(b => b.Lead.Phone == phone &&
+                   (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Reminded))
             .OrderByDescending(b => b.ScheduledAt)
             .FirstOrDefaultAsync();
 
@@ -90,7 +117,8 @@ public class WebhookController(AiQualificationService aiService, WhatsAppService
     {
         var booking = await db.Bookings
             .Include(b => b.Lead)
-            .Where(b => b.Lead.Phone == phone && (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Reminded))
+            .Where(b => b.Lead.Phone == phone &&
+                   (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.Reminded))
             .OrderByDescending(b => b.ScheduledAt)
             .FirstOrDefaultAsync();
 

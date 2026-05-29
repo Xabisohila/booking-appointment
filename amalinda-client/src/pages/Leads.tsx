@@ -120,8 +120,8 @@ export default function Leads() {
   const slotsByDay = groupByDay(slots)
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <div className="flex-1 p-8 overflow-auto">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
+      <div className="flex-1 p-4 md:p-8 overflow-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-slate-800">Leads</h2>
@@ -156,8 +156,8 @@ export default function Leads() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 {['Name', 'Phone', 'Concern', 'Status', 'Date'].map(h => (
@@ -187,7 +187,7 @@ export default function Leads() {
 
       {/* Conversation panel */}
       {selected && (
-        <div className="w-96 border-l border-slate-200 bg-white flex flex-col h-full shadow-lg">
+        <div className="md:w-96 border-t md:border-t-0 md:border-l border-slate-200 bg-white flex flex-col h-64 md:h-full shadow-lg flex-shrink-0">
           <div className="px-5 py-4 border-b border-slate-200 flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">WhatsApp Conversation</p>

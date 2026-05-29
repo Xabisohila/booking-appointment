@@ -21,6 +21,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddSingleton(new AnthropicClient(builder.Configuration["Anthropic:ApiKey"]!));
+builder.Services.AddSingleton<RateLimitService>();
 builder.Services.AddScoped<WhatsAppService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<SlotService>();
@@ -60,6 +61,19 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapGet("/health", async (AmalindaPlumbing.Api.Data.AppDbContext db) =>
+{
+    try
+    {
+        await db.Database.CanConnectAsync();
+        return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Database unreachable: {ex.Message}");
+    }
+});
 
 using (var scope = app.Services.CreateScope())
 {
